@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <!-- [註解] 基礎設定 -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>雜誌截圖智慧翻譯器</title>
+    <!-- [註解] 載入 Tailwind CSS 框架，用於快速排版和美化介面 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- [註解] 載入 Google Fonts 的 Noto Sans TC 字體 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- [註解] 自訂 CSS 樣式 -->
+    <style>
+        /* [註解] 設定頁面預設字體和背景顏色 */
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f0f2f5;
+        }
+        /* [註解] 自訂檔案上傳按鈕的樣式 */
+        .custom-file-upload {
+            border: 2px dashed #cbd5e1;
+            display: inline-block;
+            padding: 2rem;
+            cursor: pointer;
+            transition: background-color 0.3s, border-color 0.3s;
+            border-radius: 0.75rem;
+            width: 100%;
+            text-align: center;
+        }
+        .custom-file-upload:hover {
+            background-color: #e2e8f0;
+            border-color: #94a3b8;
+        }
+        /* [註解] 讀取中轉圈動畫 */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* [註解] 可拖曳浮動視窗的樣式 */
+        .draggable-panel {
+            position: absolute;
+            z-index: 10;
+            background-color: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            width: 320px; /* 預設寬度 */
+            height: 400px; /* 預設高度 */
+            min-width: 250px;
+            min-height: 150px;
+            resize: both;
+            overflow: hidden;
+        }
+        /* [註解] 浮動視窗標題列 */
+        .panel-header {
+            padding: 0.5rem 1rem;
+            cursor: move;
+            background-color: rgba(241, 245, 249, 0.9);
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top-left-radius: 0.75rem;
+            border-top-right-radius: 0.75rem;
+            flex-shrink: 0;
+        }
+        /* [註解] 浮動視窗內容區域 */
+        .panel-content {
+            padding: 1rem;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        /* [註解] 浮動視窗控制按鈕 */
+        .panel-controls button {
+            background: none;
+            border: none;
+            width: 24px;
+            height: 24px;
+            font-size: 1.2rem;
+            line-height: 1;
+            cursor: pointer;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* [註解] 最小化、最大化時的樣式變化 */
+        .panel-minimized .panel-content, .panel-minimized .panel-resize-handle {
+            display: none;
+        }
+        .panel-minimized {
+            height: auto !important;
+            width: auto !important;
+            resize: none;
+        }
+        .panel-maximized {
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            resize: none;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body class="antialiased text-slate-800">
+
+    <!-- [註解] 主應用程式容器 -->
+    <div id="app" class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <!-- [註解] 頁面標題區塊 -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">雜誌截圖智慧翻譯器</h1>
+            <p class="mt-2 text-slate-600">上傳雜誌截圖，AI 將為您分析排版並提供通順的繁體中文翻譯。</p>
+            <!-- [註解] 新增 API 金鑰設定按鈕 -->
+            <button id="api-key-button" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md hover:bg-gray-300 transition-transform transform hover:scale-105">
+                設定 API 金鑰
+            </button>
+        </header>
+
+        <!-- [註解] 圖片上傳區塊 -->
+        <div id="upload-section" class="bg-white p-6 md:p-8 rounded-2xl shadow-lg max-w-4xl mx-auto">
+            <!-- [註解] 點擊此標籤可觸發檔案選擇 -->
+            <label for="file-upload" class="custom-file-upload block">
+                <!-- [註解] SVG 圖示已從此處移除 -->
+                <span class="mt-2 block text-sm font-semibold text-slate-700">點擊此處或拖曳圖片到這裡</span>
+                <span class="mt-1 block text-xs text-slate-500">支援多張圖片上傳 (PNG, JPG)</span>
+            </label>
+            <!-- [註解] 實際的檔案輸入控制項，被隱藏起來，由上面的 label 觸發 -->
+            <input id="file-upload" type="file" class="hidden" accept="image/png, image/jpeg" multiple>
+
+            <!-- [註解] 上傳圖片的預覽區域 -->
+            <div id="preview-area" class="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
+
+            <!-- [註解] 翻譯按鈕 -->
+            <div class="mt-8 text-center">
+                <button id="translate-button" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg shadow-md hover:bg-blue-700 transition-transform transform hover:scale-105 disabled:bg-slate-400 disabled:cursor-not-allowed disabled:transform-none" disabled>
+                    開始翻譯
+                </button>
+            </div>
+        </div>
+
+        <!-- [註解] 讀取中提示區塊 -->
+        <div id="loading-indicator" class="hidden my-8 flex flex-col items-center justify-center text-center">
+            <div class="spinner"></div>
+            <p class="mt-4 text-slate-600 font-semibold">AI 正在努力分析與翻譯中，請稍候...</p>
+            <p id="progress-text" class="text-sm text-slate-500 mt-1"></p>
+        </div>
+
+        <!-- [註解] 顯示翻譯結果的區塊 -->
+        <div id="results-section" class="mt-8 space-y-16">
+            <!-- 翻譯結果將會動態插入此處 -->
+        </div>
+    </div>
+
+    <!-- [註解] 自訂的警告訊息彈出視窗 -->
+    <div id="alert-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-xl text-center w-11/12 md:w-1/3">
+            <p id="alert-message" class="text-lg mb-6"></p>
+            <button id="close-modal-button" class="bg-blue-600 text-white font-bold py-2 px-8 rounded-lg hover:bg-blue-700">確定</button>
+        </div>
+    </div>
+
+    <!-- [註解] API 金鑰輸入彈出視窗 -->
+    <div id="api-key-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-11/12 md:w-1/3">
+            <h3 class="text-xl font-bold mb-4">設定您的 Google Gemini API 金鑰</h3>
+            <p class="text-slate-600 mb-6">請在此處輸入您的 API 金鑰。您的金鑰將會被儲存在您的瀏覽器中，只供此頁面使用，不會上傳到任何伺服器。</p>
+            <input type="password" id="api-key-input" class="w-full p-2 border border-gray-300 rounded-lg mb-6" placeholder="在此貼上您的 API 金鑰">
+            <div class="flex justify-end space-x-4">
+                <button id="cancel-api-key-button" class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300">取消</button>
+                <button id="save-api-key-button" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700">儲存</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- [註解] 新增功能：圖片全螢幕檢視的彈出視窗 -->
+    <div id="image-fullscreen-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-40 transition-opacity duration-300">
+        <div id="fullscreen-content" class="relative w-full h-full">
+            <!-- 全螢幕關閉按鈕 -->
+            <button id="close-fullscreen-btn" class="absolute top-4 right-6 text-white text-5xl font-bold z-50 hover:text-gray-300">&times;</button>
+            <!-- 全螢幕圖片容器 -->
+            <div class="w-full h-full flex justify-center items-center p-4">
+                <img id="fullscreen-image" src="" class="max-w-full max-h-full object-contain">
+            </div>
+             <!-- 翻譯浮動視窗將會被移動到此處 -->
+        </div>
+    </div>
+
+
+    <!-- [註解] 主要的 JavaScript 程式碼開始 -->
+    <script>
+        // [註解] 獲取頁面上各個重要的 HTML 元素，以便後續操作
+        const fileUploadInput = document.getElementById('file-upload');
+        const translateButton = document.getElementById('translate-button');
+        const previewArea = document.getElementById('preview-area');
+        const uploadSection = document.getElementById('upload-section');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const resultsSection = document.getElementById('results-section');
+        const progressText = document.getElementById('progress-text');
+
+        const alertModal = document.getElementById('alert-modal');
+        const alertMessage = document.getElementById('alert-message');
+        const closeModalButton = document.getElementById('close-modal-button');
+
+        // [註解] 獲取 API 金鑰相關的元素
+        const apiKeyModal = document.getElementById('api-key-modal');
+        const apiKeyButton = document.getElementById('api-key-button');
+        const cancelApiKeyButton = document.getElementById('cancel-api-key-button');
+        const saveApiKeyButton = document.getElementById('save-api-key-button');
+        const apiKeyInput = document.getElementById('api-key-input');
+        
+        // [註解] 獲取全螢幕圖片檢視相關的元素
+        const fullscreenModal = document.getElementById('image-fullscreen-modal');
+        const fullscreenContent = document.getElementById('fullscreen-content');
+        const fullscreenImage = document.getElementById('fullscreen-image');
+        const closeFullscreenBtn = document.getElementById('close-fullscreen-btn');
+
+        // [註解] 用一個陣列來儲存使用者上傳的圖片檔案
+        let imageFiles = [];
+        let userApiKey = '';
+
+        // [註解] --- API 金鑰處理 ---
+        // [註解] 頁面載入時，檢查並載入 API 金鑰
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAndCheckApiKey();
+        });
+
+        // [註解] 載入金鑰並更新 UI 狀態
+        function loadAndCheckApiKey() {
+            userApiKey = localStorage.getItem('geminiApiKey');
+            if (userApiKey) {
+                apiKeyButton.textContent = 'API 金鑰已設定';
+                apiKeyButton.classList.remove('bg-gray-200', 'hover:bg-gray-300');
+                apiKeyButton.classList.add('bg-green-200', 'hover:bg-green-300');
+                fileUploadInput.disabled = false;
+            } else {
+                apiKeyButton.textContent = '請先設定 API 金鑰';
+                apiKeyButton.classList.remove('bg-green-200', 'hover:bg-green-300');
+                apiKeyButton.classList.add('bg-red-200', 'hover:bg-red-300');
+                fileUploadInput.disabled = true;
+                showAlert('請點擊上方的按鈕設定您的 Google Gemini API 金鑰才能開始使用。');
+            }
+            // 根據是否有金鑰，決定是否禁用檔案上傳區域的點擊
+            const uploadLabel = document.querySelector('label[for="file-upload"]');
+            if (!userApiKey) {
+                uploadLabel.style.cursor = 'not-allowed';
+                uploadLabel.title = '請先設定 API 金鑰';
+            } else {
+                uploadLabel.style.cursor = 'pointer';
+                uploadLabel.title = '';
+            }
+        }
+
+        // [註解] 顯示 API 金鑰輸入視窗
+        apiKeyButton.addEventListener('click', () => {
+            apiKeyInput.value = localStorage.getItem('geminiApiKey') || '';
+            apiKeyModal.classList.remove('hidden');
+        });
+
+        // [註解] 關閉 API 金鑰輸入視窗
+        cancelApiKeyButton.addEventListener('click', () => {
+            apiKeyModal.classList.add('hidden');
+        });
+
+        // [註解] 儲存 API 金鑰
+        saveApiKeyButton.addEventListener('click', () => {
+            const newApiKey = apiKeyInput.value.trim();
+            if (newApiKey) {
+                localStorage.setItem('geminiApiKey', newApiKey);
+                apiKeyModal.classList.add('hidden');
+                loadAndCheckApiKey(); // 重新載入並檢查
+                showAlert('API 金鑰已成功儲存。');
+            } else {
+                showAlert('API 金鑰不能為空。');
+            }
+        });
+""
+
+        // [註解] 顯示自訂警告視窗的函式
+        function showAlert(message) {
+            alertMessage.textContent = message;
+            alertModal.classList.remove('hidden');
+        }
+        // [註解] 關閉自訂警告視窗的事件監聽
+        closeModalButton.addEventListener('click', () => {
+            alertModal.classList.add('hidden');
+        });
+
+        // [註解] 監聽檔案上傳的變化事件
+        fileUploadInput.addEventListener('change', (event) => {
+            previewArea.innerHTML = ''; // 清空舊的預覽
+            imageFiles = Array.from(event.target.files); // 將選擇的檔案存入陣列
+
+            if (imageFiles.length > 0) {
+                translateButton.disabled = false; // 如果有檔案，啟用翻譯按鈕
+                // 遍歷每個檔案，產生預覽圖
+                imageFiles.forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const previewWrapper = document.createElement('div');
+                        previewWrapper.className = 'relative aspect-w-1 aspect-h-1';
+                        previewWrapper.innerHTML = `
+                            <img src="${e.target.result}" alt="預覽 ${index + 1}" class="object-cover w-full h-full rounded-lg shadow-md">
+                            <div class="absolute top-0 right-0 bg-black bg-opacity-50 text-white text-xs font-bold px-2 py-1 rounded-bl-lg rounded-tr-lg">${index + 1}</div>
+                        `;
+                        previewArea.appendChild(previewWrapper);
+                    };
+                    reader.readAsDataURL(file); // 讀取檔案內容為 Data URL
+                });
+            } else {
+                translateButton.disabled = true; // 如果沒有檔案，禁用翻譯按鈕
+            }
+        });
+
+        // [註解] 監聽翻譯按鈕的點擊事件
+        translateButton.addEventListener('click', async () => {
+            if (!userApiKey) {
+                showAlert('請先設定 API 金鑰，然後再上傳圖片進行翻譯。');
+                return;
+            }
+            if (imageFiles.length === 0) {
+                showAlert('請先上傳至少一張圖片。');
+                return;
+            }
+
+            // [註解] 切換介面，隱藏上傳區，顯示讀取中提示
+            uploadSection.classList.add('hidden');
+            loadingIndicator.classList.remove('hidden');
+            resultsSection.innerHTML = '';
+
+            // [註解] 遍歷所有上傳的圖片，逐一進行翻譯
+            for (let i = 0; i < imageFiles.length; i++) {
+                progressText.textContent = `正在處理第 ${i + 1} / ${imageFiles.length} 張圖片...`;
+                try {
+                    // [註解] 將圖片轉為 Base64 字串
+                    const base64Image = await imageToBase64(imageFiles[i]);
+                    const imageData = base64Image.split(',')[1];
+                    const mimeType = imageFiles[i].type;
+                    
+                    // [註解] 呼叫 Gemini API 進行翻譯
+                    const resultText = await getTranslationFromGemini(imageData, mimeType);
+                    
+                    // [註解] 在頁面上顯示翻譯結果
+                    displayResult(base64Image, resultText, i + 1);
+
+                } catch (error) {
+                    console.error(`處理圖片 ${i + 1} 時發生錯誤:`, error);
+                    displayError(i + 1, error.message);
+                }
+            }
+
+            loadingIndicator.classList.add('hidden'); // 隱藏讀取中提示
+        });
+        
+        // [註解] 將圖片檔案轉換成 Base64 編碼的函式
+        function imageToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // [註解] 呼叫 Google Gemini API 的主要函式
+        async function getTranslationFromGemini(base64ImageData, mimeType) {
+            if (!userApiKey) {
+                throw new Error("API 金鑰未設定，請點擊頁面頂端的按鈕進行設定。");
+            }
+
+            // [註解] 模型名稱輸入列
+            // 此處定義了要呼叫的 Gemini 模型版本。
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
+            
+            // [註解] 給予 AI 的詳細指令 (Prompt)，指導它如何分析與翻譯
+            const prompt = `
+# 核心原則：絕不遺漏
+你的最重要任務是 **鉅細靡遺**。你必須找出並翻譯頁面上 **每一個** 看得見的文字，無論大小或位置。絕對不能遺漏任何文字方塊。
+
+# 角色與任務
+你是一個頂尖的雜誌版面分析師與翻譯家，以細緻和全面著稱，你理解常用雜誌的排版方式和內容及分段，並且可以精準的翻譯各國文字到流暢且理解上下文的語意．
+
+# 指令步驟
+1.  **全面掃描與辨識:**
+    * 仔細掃描整個圖片，找出 **所有** 的文字元素。
+    * 這包括但不限於：主標題、副標題、引言、**所有內文** (這是最常被遺漏的部分，請特別注意)、圖片說明、圖表內的文字、作者資訊、側邊欄註記
+
+2.  **精準標記區塊:**
+    * 為你辨識出的每一個文字排版方格，基於它在版面中的「位置」和「功能」，給定一個清晰的描述性標籤 (請使用繁體中文)
+    * 若文字方格為該頁的主文，不需再標記主文的個段落，則以主文標籤顯示所有內容即可。
+    * 範例：(中央主文)、(左下角圖說)、(頂部大標題)、(右側欄位引言)。
+
+3.  **流暢語意翻譯:**
+    * 針對每一個文字區塊，理解其上下文和語意，然後將其文字內容辨識。
+    --> 將辨識內容翻譯成 **流暢、通順、且自然的繁體中文**。
+    * 若有專有名詞或無法以常用中文翻譯出來的名詞，請在翻譯後面以{}附註原文
+
+
+4.  **最終驗證與格式化輸出:**
+    * **在輸出前，請再次對照原圖進行最後檢查，確保沒有任何文字被遺漏並且文字為繁體中文。**
+    * 嚴格按照以下格式回傳結果，不要包含任何額外的說明或開頭語：
+        (你定義的描述性標籤): 翻譯後的繁體中文內容
+`;
+
+            // [註解] 準備要發送給 API 的請求內容 (payload)
+            const payload = {
+                contents: [ { parts: [ { text: prompt }, { inlineData: { mimeType: mimeType, data: base64ImageData } } ] } ],
+                generationConfig: { "temperature": 0.3, "topP": 0.95, "topK": 40 }
+            };
+            
+            // [註解] 使用 fetch 發送非同步請求到 API
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            // [註解] 【錯誤修復】先將 API 回應以純文字格式讀取，避免直接解析 JSON 失敗
+            const responseText = await response.text();
+
+            // [註解] 處理 API 回應
+            if (!response.ok) {
+                console.error("API Error Response Text:", responseText);
+                let detail = responseText;
+                try {
+                    // 嘗試將錯誤訊息解析為 JSON 以取得更詳細的錯誤內容
+                    detail = JSON.parse(responseText).error?.message || responseText;
+                } catch(e) {
+                    // 如果解析失敗，表示錯誤訊息不是 JSON 格式，直接使用原始文字
+                }
+                throw new Error(`API 請求失敗，狀態碼: ${response.status}. ${detail}`);
+            }
+
+            // [註解] 如果 API 請求成功，才嘗試解析 JSON
+            try {
+                const result = JSON.parse(responseText);
+                
+                // [註解] 從 API 回應中解析出翻譯文字
+                if (result.candidates && result.candidates[0]?.content?.parts?.[0]?.text) {
+                    return result.candidates[0].content.parts[0].text;
+                } else {
+                    console.warn("API回傳的資料結構不如預期:", result);
+                    if (result.promptFeedback?.blockReason) {
+                        throw new Error(`內容被封鎖，原因: ${result.promptFeedback.blockReason}`);
+                    }
+                    throw new Error("API 未回傳有效的翻譯內容。");
+                }
+            } catch (e) {
+                console.error("無法解析成功的 API 回應:", responseText, e);
+                throw new Error(`無法解析來自 API 的回應。收到的內容: ${responseText.substring(0, 100)}...`);
+            }
+        }
+
+        // [註解] 將結果顯示在頁面上的函式
+        function displayResult(imageBase64, translation, pageNum) {
+            const resultContainer = document.createElement('div');
+            resultContainer.className = 'bg-white p-4 md:p-6 rounded-2xl shadow-lg relative animate-fade-in min-h-[60vh]'; // Give container a min-height
+            resultContainer.innerHTML = `<h2 class="text-xl font-bold mb-4 text-center">Page ${pageNum}</h2>`;
+
+            // [註解] 新增功能：讓圖片可點擊以觸發全螢幕
+            const imageWrapper = document.createElement('div');
+            imageWrapper.className = 'flex justify-center items-center h-full cursor-pointer hover:opacity-80 transition-opacity';
+            imageWrapper.innerHTML = `<img src="${imageBase64}" class="max-w-full md:max-w-3xl max-h-[80vh] h-auto rounded-lg shadow-md" alt="原始截圖 ${pageNum}">`;
+
+            const panel = document.createElement('div');
+            panel.className = 'draggable-panel';
+            panel.style.top = '20px';
+            panel.style.left = '20px';
+
+            const translationHtml = translation.trim().split('\n').map(line => {
+                const parts = line.split(/:(.*)/s);
+                if (parts.length > 1 && parts[0].trim().startsWith('(') && parts[0].trim().endsWith(')')) {
+                     return `<p class="mt-2"><strong class="font-semibold text-blue-700">${parts[0].trim()}:</strong>${parts[1].trim()}</p>`;
+                }
+                return `<p>${line}</p>`;
+            }).join('');
+            
+            panel.innerHTML = `
+                <div class="panel-header">
+                    <span class="font-bold text-slate-700">翻譯結果</span>
+                    <div class="panel-controls flex items-center space-x-2">
+                         <button class="panel-minimize-btn" title="縮到最小">－</button>
+                         <button class="panel-maximize-btn" title="最大化/同步檢視">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4"></path></svg>
+                         </button>
+                    </div>
+                </div>
+                <div class="panel-content leading-relaxed text-slate-700 space-y-1">
+                    ${translationHtml}
+                </div>
+            `;
+            
+            resultContainer.appendChild(imageWrapper);
+            resultContainer.appendChild(panel);
+            resultsSection.appendChild(resultContainer);
+            
+            makePanelInteractive(panel);
+            
+            // [註解] 新增功能：為圖片包裝器添加點擊事件，以打開全螢幕模式
+            imageWrapper.addEventListener('click', () => {
+                // 將對應的翻譯面板儲存起來，以便移動
+                fullscreenModal.panelToMove = panel;
+                // 儲存面板的原始父容器，以便關閉時還原
+                fullscreenModal.originalParent = resultContainer;
+                
+                // 設定全螢幕圖片的來源
+                fullscreenImage.src = imageBase64;
+                // 將翻譯面板移動到全螢幕視窗中
+                fullscreenContent.appendChild(panel);
+                // 顯示全螢幕視窗
+                fullscreenModal.classList.remove('hidden');
+            });
+        }
+
+        // [註解] 顯示錯誤訊息的函式
+        function displayError(pageNum, message) {
+            const errorBlock = document.createElement('div');
+            errorBlock.className = 'bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg shadow-md max-w-4xl mx-auto';
+            errorBlock.innerHTML = `
+                <p class="font-bold">Page ${pageNum} 處理失敗</p>
+                <p>${message}</p>
+            `;
+            resultsSection.appendChild(errorBlock);
+        }
+
+        // [註解] 讓浮動視窗可以互動 (拖曳、三種模式切換) 的函式
+        function makePanelInteractive(panel) {
+            const header = panel.querySelector('.panel-header');
+            const minimizeBtn = panel.querySelector('.panel-minimize-btn');
+            const maximizeBtn = panel.querySelector('.panel-maximize-btn');
+
+            let isDragging = false;
+            let offsetX, offsetY;
+            
+            let lastState = {
+                width: panel.style.width,
+                height: panel.style.height,
+                top: panel.style.top,
+                left: panel.style.left,
+            };
+
+            const dragStart = (e) => {
+                // 如果視窗是最大化狀態，則不允許拖曳
+                if (panel.classList.contains('panel-maximized')) return;
+                // 如果點擊的是按鈕，也不觸發拖曳
+                if (e.target.closest('button')) return;
+
+                isDragging = true;
+                const event = e.touches ? e.touches[0] : e;
+                offsetX = event.clientX - panel.offsetLeft;
+                offsetY = event.clientY - panel.offsetTop;
+                header.style.cursor = 'grabbing';
+                e.preventDefault();
+            };
+
+            const dragMove = (e) => {
+                if (!isDragging) return;
+                
+                const event = e.touches ? e.touches[0] : e;
+                let newX = event.clientX - offsetX;
+                let newY = event.clientY - offsetY;
+                
+                // 限制拖曳範圍，不能超出父容器
+                const parentRect = panel.parentElement.getBoundingClientRect();
+                const panelRect = panel.getBoundingClientRect();
+
+                if (newX < 0) newX = 0;
+                if (newY < 0) newY = 0;
+                if (newX + panelRect.width > parentRect.width) newX = parentRect.width - panelRect.width;
+                if (newY + panelRect.height > parentRect.height) newY = parentRect.height - panelRect.height;
+
+                panel.style.left = `${newX}px`;
+                panel.style.top = `${newY}px`;
+            };
+
+            const dragEnd = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                header.style.cursor = 'move';
+                // 拖曳結束後，儲存當前位置
+                if(!panel.classList.contains('panel-minimized') && !panel.classList.contains('panel-maximized')) {
+                    lastState.top = panel.style.top;
+                    lastState.left = panel.style.left;
+                }
+            };
+            
+            // 監聽滑鼠與觸控事件
+            header.addEventListener('mousedown', dragStart);
+            document.addEventListener('mousemove', dragMove);
+            document.addEventListener('mouseup', dragEnd);
+            header.addEventListener('touchstart', dragStart, { passive: false });
+            document.addEventListener('touchmove', dragMove, { passive: false });
+            document.addEventListener('touchend', dragEnd);
+
+            // 最小化按鈕邏輯
+            minimizeBtn.addEventListener('click', () => {
+                if (!panel.classList.contains('panel-minimized')) {
+                    if(!panel.classList.contains('panel-maximized')) {
+                        lastState.width = panel.style.width;
+                        lastState.height = panel.style.height;
+                    }
+                    panel.classList.add('panel-minimized');
+                    panel.classList.remove('panel-maximized');
+                } else {
+                    panel.classList.remove('panel-minimized');
+                    panel.style.width = lastState.width;
+                    panel.style.height = lastState.height;
+                }
+            });
+            
+            // 最大化/還原按鈕邏輯
+            maximizeBtn.addEventListener('click', () => {
+                panel.classList.remove('panel-minimized'); 
+                
+                if (!panel.classList.contains('panel-maximized')) {
+                    // 儲存目前狀態以便還原
+                    lastState.width = panel.style.width;
+                    lastState.height = panel.style.height;
+                    lastState.top = panel.style.top;
+                    lastState.left = panel.style.left;
+                    panel.classList.add('panel-maximized');
+                } else {
+                    // 還原到最大化前的狀態
+                    panel.classList.remove('panel-maximized');
+                    panel.style.width = lastState.width;
+                    panel.style.height = lastState.height;
+                    panel.style.top = lastState.top;
+                    panel.style.left = lastState.left;
+                }
+            });
+        }
+        
+        // [註解] 新增功能：關閉全螢幕視窗的函式
+        function closeFullscreen() {
+            // 檢查是否有需要移回的面板和其原始位置
+            if (fullscreenModal.panelToMove && fullscreenModal.originalParent) {
+                // 將面板從全螢幕視窗移回它原本的容器
+                fullscreenModal.originalParent.appendChild(fullscreenModal.panelToMove);
+            }
+            // 隱藏全螢幕視窗
+            fullscreenModal.classList.add('hidden');
+            // 清空圖片來源與暫存的面板資訊
+            fullscreenImage.src = ''; 
+            fullscreenModal.panelToMove = null;
+            fullscreenModal.originalParent = null;
+        }
+
+        // [註解] 為全螢幕的關閉按鈕和背景添加點擊事件監聽
+        closeFullscreenBtn.addEventListener('click', closeFullscreen);
+        fullscreenModal.addEventListener('click', (e) => {
+            // 如果點擊的是背景（黑色半透明區域），而不是裡面的內容
+            if (e.target === fullscreenModal) {
+                closeFullscreen();
+            }
+        });
+
+        // [註解] 添加簡單的淡入動畫效果
+        const style = document.createElement('style');
+        style.innerHTML = `
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            .animate-fade-in {
+                animation: fadeIn 0.5s ease-out forwards;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
