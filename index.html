@@ -125,50 +125,43 @@
     <!-- [註解] 主應用程式容器 -->
     <div id="app" class="container mx-auto p-4 md:p-8 max-w-7xl">
         <!-- [註解] 頁面標題區塊 -->
-        <header class="text-center mb-8">
+        <header id="main-header" class="text-center mb-8">
             <h1 class="text-3xl md:text-4xl font-bold text-slate-900">雜誌截圖智慧翻譯器</h1>
             <p id="sub-header" class="mt-2 text-slate-600">上傳雜誌截圖，AI 將為您分析排版並提供通順的繁體中文翻譯。</p>
+            <!-- [註解] 新增 API 金鑰設定按鈕 -->
+            <button id="api-key-btn" class="mt-4 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">設定 API 金鑰</button>
         </header>
 
-        <!-- [註解] API 金鑰輸入區塊 (現在與主介面整合) -->
-        <div id="api-key-section" class="bg-white p-4 mb-8 rounded-2xl shadow-lg max-w-xl mx-auto">
-            <label for="api-key-input" class="block text-sm font-medium text-gray-700 mb-1">Google Gemini API Key</label>
-            <div class="flex rounded-md shadow-sm">
-                <input type="password" id="api-key-input" class="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md focus:ring-blue-500 focus:border-blue-500 border-gray-300" placeholder="在此貼上您的 API 金鑰">
-                <button id="save-api-key-btn" class="inline-flex items-center px-4 py-2 border border-l-0 border-gray-300 rounded-r-md bg-gray-50 text-gray-700 hover:bg-gray-100 font-semibold">
-                    儲存
-                </button>
-            </div>
-             <div class="flex justify-between items-center mt-2">
-                <p class="text-xs text-gray-500">您的金鑰將會儲存在您的瀏覽器中。</p>
-                <button id="clear-api-key-btn" class="text-xs text-red-600 hover:underline">清除已存金鑰</button>
-            </div>
-        </div>
-
-        <!-- [註解] 圖片上傳區塊 -->
-        <div id="upload-section" class="bg-white p-6 md:p-8 rounded-2xl shadow-lg max-w-4xl mx-auto">
-            <label for="file-upload" class="custom-file-upload block">
-                <span class="mt-2 block text-sm font-semibold text-slate-700">點擊此處或拖曳圖片到這裡</span>
-                <span class="mt-1 block text-xs text-slate-500">支援多張圖片上傳 (PNG, JPG)</span>
-            </label>
-            <input id="file-upload" type="file" class="hidden" accept="image/png, image/jpeg" multiple>
-            <div id="preview-area" class="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
-            <div class="mt-8 text-center">
-                <button id="translate-button" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg shadow-md hover:bg-blue-700 transition-transform transform hover:scale-105 disabled:bg-slate-400 disabled:cursor-not-allowed disabled:transform-none" disabled>
-                    開始翻譯
-                </button>
+        <!-- [註解] 主頁內容容器 -->
+        <div id="main-page-content">
+            <!-- [註解] 圖片上傳區塊 -->
+            <div id="upload-section" class="bg-white p-6 md:p-8 rounded-2xl shadow-lg max-w-4xl mx-auto">
+                <label for="file-upload" class="custom-file-upload block">
+                    <span class="mt-2 block text-sm font-semibold text-slate-700">點擊此處或拖曳圖片到這裡</span>
+                    <span class="mt-1 block text-xs text-slate-500">支援多張圖片上傳 (PNG, JPG)</span>
+                </label>
+                <input id="file-upload" type="file" class="hidden" accept="image/png, image/jpeg" multiple>
+                <div id="preview-area" class="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
+                <div class="mt-8 text-center">
+                    <button id="translate-button" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg shadow-md hover:bg-blue-700 transition-transform transform hover:scale-105 disabled:bg-slate-400 disabled:cursor-not-allowed disabled:transform-none" disabled>
+                        開始翻譯
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- [註解] 讀取中提示區塊 -->
-        <div id="loading-indicator" class="hidden my-8 flex flex-col items-center justify-center text-center">
-            <div class="spinner"></div>
-            <p class="mt-4 text-slate-600 font-semibold">AI 正在努力分析與翻譯中，請稍候...</p>
-            <p id="progress-text" class="text-sm text-slate-500 mt-1"></p>
-        </div>
+        <!-- [註解] 結果頁面容器 -->
+        <div id="results-page-content" class="hidden">
+            <!-- [註解] 讀取中提示區塊 -->
+            <div id="loading-indicator" class="hidden my-8 flex flex-col items-center justify-center text-center">
+                <div class="spinner"></div>
+                <p class="mt-4 text-slate-600 font-semibold">AI 正在努力分析與翻譯中，請稍候...</p>
+                <p id="progress-text" class="text-sm text-slate-500 mt-1"></p>
+            </div>
 
-        <!-- [註解] 顯示翻譯結果的區塊 -->
-        <div id="results-section" class="mt-8 space-y-16"></div>
+            <!-- [註解] 顯示翻譯結果的區塊 -->
+            <div id="results-section" class="mt-8 space-y-16"></div>
+        </div>
     </div>
 
     <!-- [註解] 自訂的警告訊息彈出視窗 -->
@@ -188,11 +181,31 @@
             </div>
         </div>
     </div>
+    
+    <!-- [註解] 新增 API 金鑰設定的彈出視窗 -->
+    <div id="api-key-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl text-left w-11/12 max-w-md">
+            <h3 class="text-lg font-bold mb-4">設定 Google Gemini API 金鑰</h3>
+            <label for="modal-api-key-input" class="block text-sm font-medium text-gray-700">API Key</label>
+            <input type="password" id="modal-api-key-input" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            <p class="mt-2 text-xs text-gray-500">您的金鑰將會儲存在您的瀏覽器中。</p>
+            <div class="mt-6 flex justify-between items-center">
+                <button id="modal-clear-api-key-btn" class="text-xs text-red-600 hover:underline">清除已存金鑰</button>
+                <div class="space-x-4">
+                    <button id="cancel-api-key-btn" class="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300">取消</button>
+                    <button id="modal-save-api-key-btn" class="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700">儲存並關閉</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 
     <!-- [註解] 主要的 JavaScript 程式碼開始 -->
     <script>
         // [註解] 獲取頁面上各個重要的 HTML 元素
+        const mainHeader = document.getElementById('main-header');
+        const mainPageContent = document.getElementById('main-page-content');
+        const resultsPageContent = document.getElementById('results-page-content');
         const fileUploadInput = document.getElementById('file-upload');
         const translateButton = document.getElementById('translate-button');
         const previewArea = document.getElementById('preview-area');
@@ -209,9 +222,12 @@
         const closeFullscreenBtn = document.getElementById('close-fullscreen-btn');
         
         // [註解] API 金鑰相關元素
-        const apiKeyInput = document.getElementById('api-key-input');
-        const saveApiKeyBtn = document.getElementById('save-api-key-btn');
-        const clearApiKeyBtn = document.getElementById('clear-api-key-btn');
+        const apiKeyBtn = document.getElementById('api-key-btn');
+        const apiKeyModal = document.getElementById('api-key-modal');
+        const modalApiKeyInput = document.getElementById('modal-api-key-input');
+        const modalSaveApiKeyBtn = document.getElementById('modal-save-api-key-btn');
+        const cancelApiKeyBtn = document.getElementById('cancel-api-key-btn');
+        const modalClearApiKeyBtn = document.getElementById('modal-clear-api-key-btn');
 
         // [註解] 全域變數
         let imageFiles = [];
@@ -226,33 +242,62 @@
             alertModal.classList.add('hidden');
         });
 
+        // [註解] 更新 API 金鑰按鈕狀態的函式
+        function updateApiKeyButtonStatus(isSet) {
+            if (isSet) {
+                apiKeyBtn.classList.remove('bg-gray-400', 'text-white');
+                apiKeyBtn.classList.add('bg-blue-600', 'text-white');
+                apiKeyBtn.textContent = 'API 金鑰已設定';
+            } else {
+                apiKeyBtn.classList.remove('bg-blue-600', 'text-white');
+                apiKeyBtn.classList.add('bg-gray-400', 'text-white');
+                apiKeyBtn.textContent = '設定 API 金鑰';
+            }
+        }
+
         // [註解] 頁面載入時執行的主要邏輯
         document.addEventListener('DOMContentLoaded', () => {
             const savedKey = localStorage.getItem('geminiApiKey');
             if (savedKey) {
                 userApiKey = savedKey;
-                apiKeyInput.value = savedKey; // 將儲存的金鑰填入輸入框
+                updateApiKeyButtonStatus(true);
+            } else {
+                updateApiKeyButtonStatus(false);
             }
         });
+        
+        // [註解] API 設定按鈕的事件
+        apiKeyBtn.addEventListener('click', () => {
+            modalApiKeyInput.value = localStorage.getItem('geminiApiKey') || '';
+            apiKeyModal.classList.remove('hidden');
+        });
+        
+        cancelApiKeyBtn.addEventListener('click', () => {
+            apiKeyModal.classList.add('hidden');
+        });
 
-        // [註解] 儲存 API 金鑰的事件
-        saveApiKeyBtn.addEventListener('click', () => {
-            const key = apiKeyInput.value.trim();
+        // [註解] 儲存 API 金鑰的事件 (在彈出視窗中)
+        modalSaveApiKeyBtn.addEventListener('click', () => {
+            const key = modalApiKeyInput.value.trim();
             if (key) {
                 localStorage.setItem('geminiApiKey', key);
                 userApiKey = key;
+                updateApiKeyButtonStatus(true);
+                apiKeyModal.classList.add('hidden');
                 showAlert('API 金鑰已成功儲存！');
             } else {
                 showAlert('API 金鑰不能為空。');
             }
         });
         
-        // [註解] 清除已存 API 金鑰的事件
-        clearApiKeyBtn.addEventListener('click', () => {
+        // [註解] 清除已存 API 金鑰的事件 (在彈出視窗中)
+        modalClearApiKeyBtn.addEventListener('click', () => {
              if (confirm('您確定要清除已儲存的 API 金鑰嗎？')) {
                 localStorage.removeItem('geminiApiKey');
                 userApiKey = '';
-                apiKeyInput.value = '';
+                modalApiKeyInput.value = '';
+                updateApiKeyButtonStatus(false);
+                apiKeyModal.classList.add('hidden');
                 showAlert('已清除儲存的 API 金鑰。');
             }
         });
@@ -290,12 +335,15 @@
             }
             userApiKey = localStorage.getItem('geminiApiKey') || '';
             if (!userApiKey) {
-                showAlert('請先輸入並儲存您的 API 金鑰。');
-                apiKeyInput.focus();
+                showAlert('請先設定您的 API 金鑰。');
+                apiKeyBtn.click(); // 自動打開設定視窗
                 return;
             }
 
-            uploadSection.classList.add('hidden');
+            // [註解] 切換到結果檢視模式
+            mainHeader.classList.add('hidden');
+            mainPageContent.classList.add('hidden');
+            resultsPageContent.classList.remove('hidden');
             loadingIndicator.classList.remove('hidden');
             resultsSection.innerHTML = '';
 
@@ -305,9 +353,12 @@
                     const base64Image = await imageToBase64(imageFiles[i]);
                     const imageData = base64Image.split(',')[1];
                     const mimeType = imageFiles[i].type;
-                    // [註解] 【錯誤修復】呼叫帶有重試機制的函式
                     const resultText = await translateWithRetry(imageData, mimeType);
-                    displayResult(base64Image, resultText, i + 1);
+                    
+                    // [註解] 新增：只有第一張圖才顯示返回按鈕
+                    const showBackButton = (i === 0);
+                    displayResult(base64Image, resultText, i + 1, showBackButton);
+
                 } catch (error) {
                     console.error(`處理圖片 ${i + 1} 時發生錯誤:`, error);
                     displayError(i + 1, error.message);
@@ -315,10 +366,6 @@
             }
 
             loadingIndicator.classList.add('hidden');
-            uploadSection.classList.remove('hidden');
-            previewArea.innerHTML = '';
-            fileUploadInput.value = '';
-            translateButton.disabled = true;
         });
         
         function imageToBase64(file) {
@@ -330,32 +377,25 @@
             });
         }
 
-        // [註解] 【錯誤修復】新增的函式，用於在 API 失敗時自動重試
         async function translateWithRetry(imageData, mimeType, maxRetries = 3, initialDelay = 1000) {
             let lastError = null;
             for (let attempt = 0; attempt < maxRetries; attempt++) {
                 try {
-                    // 嘗試呼叫主要的翻譯函式
                     return await getTranslationFromGemini(imageData, mimeType);
                 } catch (error) {
                     lastError = error;
-                    // 檢查錯誤是否為 503 (伺服器過載)
                     if (error.message.includes('503') || error.message.includes('UNAVAILABLE') || error.message.includes('overloaded')) {
                         if (attempt < maxRetries - 1) {
-                            // 計算下一次重試的延遲時間 (指數退避)
                             const delay = initialDelay * Math.pow(2, attempt);
                             console.log(`Attempt ${attempt + 1} failed due to server overload. Retrying in ${delay}ms...`);
                             progressText.textContent = `模型暫時過載，將在 ${delay / 1000} 秒後重試... (第 ${attempt + 1} 次)`;
-                            // 等待指定時間
                             await new Promise(resolve => setTimeout(resolve, delay));
                         }
                     } else {
-                        // 如果不是 503 錯誤，則直接拋出錯誤，不再重試
                         throw error;
                     }
                 }
             }
-            // 如果所有重試都失敗，拋出最終的錯誤訊息
             throw new Error(`模型持續過載，請稍後再試。 (${lastError.message})`);
         }
 
@@ -405,7 +445,27 @@
             }
         }
 
-        function displayResult(imageBase64, translation, pageNum) {
+        function displayResult(imageBase64, translation, pageNum, showBackButton) {
+            // [註解] 如果需要，建立返回主頁按鈕
+            if (showBackButton) {
+                const backButton = document.createElement('button');
+                backButton.textContent = '← 返回主頁';
+                backButton.className = 'mb-4 px-4 py-2 rounded-lg text-white bg-gray-600 hover:bg-gray-700 font-semibold';
+                backButton.addEventListener('click', () => {
+                    // 切換回主頁模式
+                    mainHeader.classList.remove('hidden');
+                    mainPageContent.classList.remove('hidden');
+                    resultsPageContent.classList.add('hidden');
+                    resultsSection.innerHTML = ''; // 清空結果
+                    
+                    // 重置上傳狀態
+                    previewArea.innerHTML = '';
+                    fileUploadInput.value = '';
+                    translateButton.disabled = true;
+                });
+                resultsSection.appendChild(backButton);
+            }
+
             const resultContainer = document.createElement('div');
             resultContainer.className = 'bg-white p-4 md:p-6 rounded-2xl shadow-lg relative animate-fade-in min-h-[60vh]';
             resultContainer.innerHTML = `<h2 class="text-xl font-bold mb-4 text-center">Page ${pageNum}</h2>`;
