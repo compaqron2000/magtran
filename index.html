@@ -84,7 +84,7 @@
             overflow-y: auto;
         }
         /* [註解] 浮動視窗控制按鈕 */
-        .panel-controls button {
+        .panel-controls button, .panel-actions button {
             background: none;
             border: none;
             width: 24px;
@@ -96,6 +96,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: color 0.2s;
+        }
+        .panel-controls button:hover, .panel-actions button:hover {
+            color: #1e293b;
         }
         /* [註解] 最小化、最大化時的樣式變化 */
         .panel-minimized .panel-content, .panel-minimized .panel-resize-handle {
@@ -124,10 +128,6 @@
         <header class="text-center mb-8">
             <h1 class="text-3xl md:text-4xl font-bold text-slate-900">雜誌截圖智慧翻譯器</h1>
             <p class="mt-2 text-slate-600">上傳雜誌截圖，AI 將為您分析排版並提供通順的繁體中文翻譯。</p>
-            <!-- [註解] 新增 API 金鑰設定按鈕 -->
-            <button id="api-key-button" class="mt-4 bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md hover:bg-gray-300 transition-transform transform hover:scale-105">
-                設定 API 金鑰
-            </button>
         </header>
 
         <!-- [註解] 圖片上傳區塊 -->
@@ -172,19 +172,6 @@
             <button id="close-modal-button" class="bg-blue-600 text-white font-bold py-2 px-8 rounded-lg hover:bg-blue-700">確定</button>
         </div>
     </div>
-
-    <!-- [註解] API 金鑰輸入彈出視窗 -->
-    <div id="api-key-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
-        <div class="bg-white p-8 rounded-lg shadow-xl w-11/12 md:w-1/3">
-            <h3 class="text-xl font-bold mb-4">設定您的 Google Gemini API 金鑰</h3>
-            <p class="text-slate-600 mb-6">請在此處輸入您的 API 金鑰。您的金鑰將會被儲存在您的瀏覽器中，只供此頁面使用，不會上傳到任何伺服器。</p>
-            <input type="password" id="api-key-input" class="w-full p-2 border border-gray-300 rounded-lg mb-6" placeholder="在此貼上您的 API 金鑰">
-            <div class="flex justify-end space-x-4">
-                <button id="cancel-api-key-button" class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300">取消</button>
-                <button id="save-api-key-button" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700">儲存</button>
-            </div>
-        </div>
-    </div>
     
     <!-- [註解] 新增功能：圖片全螢幕檢視的彈出視窗 -->
     <div id="image-fullscreen-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-40 transition-opacity duration-300">
@@ -214,13 +201,6 @@
         const alertModal = document.getElementById('alert-modal');
         const alertMessage = document.getElementById('alert-message');
         const closeModalButton = document.getElementById('close-modal-button');
-
-        // [註解] 獲取 API 金鑰相關的元素
-        const apiKeyModal = document.getElementById('api-key-modal');
-        const apiKeyButton = document.getElementById('api-key-button');
-        const cancelApiKeyButton = document.getElementById('cancel-api-key-button');
-        const saveApiKeyButton = document.getElementById('save-api-key-button');
-        const apiKeyInput = document.getElementById('api-key-input');
         
         // [註解] 獲取全螢幕圖片檢視相關的元素
         const fullscreenModal = document.getElementById('image-fullscreen-modal');
@@ -230,64 +210,6 @@
 
         // [註解] 用一個陣列來儲存使用者上傳的圖片檔案
         let imageFiles = [];
-        let userApiKey = '';
-
-        // [註解] --- API 金鑰處理 ---
-        // [註解] 頁面載入時，檢查並載入 API 金鑰
-        document.addEventListener('DOMContentLoaded', () => {
-            loadAndCheckApiKey();
-        });
-
-        // [註解] 載入金鑰並更新 UI 狀態
-        function loadAndCheckApiKey() {
-            userApiKey = localStorage.getItem('geminiApiKey');
-            if (userApiKey) {
-                apiKeyButton.textContent = 'API 金鑰已設定';
-                apiKeyButton.classList.remove('bg-gray-200', 'hover:bg-gray-300');
-                apiKeyButton.classList.add('bg-green-200', 'hover:bg-green-300');
-                fileUploadInput.disabled = false;
-            } else {
-                apiKeyButton.textContent = '請先設定 API 金鑰';
-                apiKeyButton.classList.remove('bg-green-200', 'hover:bg-green-300');
-                apiKeyButton.classList.add('bg-red-200', 'hover:bg-red-300');
-                fileUploadInput.disabled = true;
-                showAlert('請點擊上方的按鈕設定您的 Google Gemini API 金鑰才能開始使用。');
-            }
-            // 根據是否有金鑰，決定是否禁用檔案上傳區域的點擊
-            const uploadLabel = document.querySelector('label[for="file-upload"]');
-            if (!userApiKey) {
-                uploadLabel.style.cursor = 'not-allowed';
-                uploadLabel.title = '請先設定 API 金鑰';
-            } else {
-                uploadLabel.style.cursor = 'pointer';
-                uploadLabel.title = '';
-            }
-        }
-
-        // [註解] 顯示 API 金鑰輸入視窗
-        apiKeyButton.addEventListener('click', () => {
-            apiKeyInput.value = localStorage.getItem('geminiApiKey') || '';
-            apiKeyModal.classList.remove('hidden');
-        });
-
-        // [註解] 關閉 API 金鑰輸入視窗
-        cancelApiKeyButton.addEventListener('click', () => {
-            apiKeyModal.classList.add('hidden');
-        });
-
-        // [註解] 儲存 API 金鑰
-        saveApiKeyButton.addEventListener('click', () => {
-            const newApiKey = apiKeyInput.value.trim();
-            if (newApiKey) {
-                localStorage.setItem('geminiApiKey', newApiKey);
-                apiKeyModal.classList.add('hidden');
-                loadAndCheckApiKey(); // 重新載入並檢查
-                showAlert('API 金鑰已成功儲存。');
-            } else {
-                showAlert('API 金鑰不能為空。');
-            }
-        });
-""
 
         // [註解] 顯示自訂警告視窗的函式
         function showAlert(message) {
@@ -327,10 +249,6 @@
 
         // [註解] 監聽翻譯按鈕的點擊事件
         translateButton.addEventListener('click', async () => {
-            if (!userApiKey) {
-                showAlert('請先設定 API 金鑰，然後再上傳圖片進行翻譯。');
-                return;
-            }
             if (imageFiles.length === 0) {
                 showAlert('請先上傳至少一張圖片。');
                 return;
@@ -377,40 +295,45 @@
 
         // [註解] 呼叫 Google Gemini API 的主要函式
         async function getTranslationFromGemini(base64ImageData, mimeType) {
-            if (!userApiKey) {
-                throw new Error("API 金鑰未設定，請點擊頁面頂端的按鈕進行設定。");
-            }
-
+            
+            // [註解] START: 在瀏覽器獨立開啟時需要修改的部分
+            // ==============================================================================
+            // [註解] API 金鑰輸入處
+            // 當您在自己的瀏覽器中執行此 HTML 檔案時，必須在此處填入您自己的 Google Gemini API 金鑰。
+            // 在目前環境中，此處留空，金鑰會由系統自動提供。
+            const apiKey = ""; 
+            
             // [註解] 模型名稱輸入列
             // 此處定義了要呼叫的 Gemini 模型版本。
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            // ==============================================================================
+            // [註解] END: 修改結束
             
             // [註解] 給予 AI 的詳細指令 (Prompt)，指導它如何分析與翻譯
             const prompt = `
-# 核心原則：絕不遺漏
-你的最重要任務是 **鉅細靡遺**。你必須找出並翻譯頁面上 **每一個** 看得見的文字，無論大小或位置。絕對不能遺漏任何文字方塊。
+# 核心原則
+1.  **絕不遺漏**: 你的最重要任務是 **鉅細靡遺**。你必須找出並翻譯頁面上 **每一個** 看得見的文字，無論大小或位置。絕對不能遺漏任何文字方塊。
+2.  **空間精準度**: 在標示位置時，必須極度小心。**左邊就是左邊，右邊就是右邊**。請勿混淆方向。
 
 # 角色與任務
-你是一個頂尖的雜誌版面分析師與翻譯家，以細緻和全面著稱，你理解常用雜誌的排版方式和內容及分段，並且可以精準的翻譯各國文字到流暢且理解上下文的語意．
+你是一個頂尖的雜誌版面分析師與翻譯家，以細緻、全面、且空間感極度準確著稱。
 
 # 指令步驟
 1.  **全面掃描與辨識:**
     * 仔細掃描整個圖片，找出 **所有** 的文字元素。
-    * 這包括但不限於：主標題、副標題、引言、**所有內文** (這是最常被遺漏的部分，請特別注意)、圖片說明、圖表內的文字、作者資訊、側邊欄註記
+    * 這包括但不限於：主標題、副標題、引言、**所有內文段落** (這是最常被遺漏的部分，請特別注意)、圖片說明、圖表內的文字、頁眉、頁腳、頁碼、作者資訊、側邊欄註記，甚至是小字的版權聲明。
 
 2.  **精準標記區塊:**
-    * 為你辨識出的每一個文字排版方格，基於它在版面中的「位置」和「功能」，給定一個清晰的描述性標籤 (請使用繁體中文)
-    * 若文字方格為該頁的主文，不需再標記主文的個段落，則以主文標籤顯示所有內容即可。
-    * 範例：(中央主文)、(左下角圖說)、(頂部大標題)、(右側欄位引言)。
+    * 為你辨識出的每一個文字排版方格，基於它在版面中的「**精確位置**」和「功能」，給定一個清晰的描述性標籤 (請使用繁體中文)。
+    * **位置標示範例**: (右上角品牌標誌)、(左側主文第一段)、(頁面底部中央圖說)、(中間偏右引言)。
+    * **特別注意**: 如果一個標誌在圖片的 **右上方**，請務-必標記為 (右上角標誌)，**絕不能**標記為 (左上角標誌)。
 
 3.  **流暢語意翻譯:**
-    * 針對每一個文字區塊，理解其上下文和語意，然後將其文字內容辨識。
-    --> 將辨識內容翻譯成 **流暢、通順、且自然的繁體中文**。
-    * 若有專有名詞或無法以常用中文翻譯出來的名詞，請在翻譯後面以{}附註原文
-
+    * 針對每一個文字區塊，理解其上下文和語意，然後將其內容翻譯成**流暢、通順、且自然的繁體中文**。
+    * 若有專有名詞或無法以常用中文翻譯出來的名詞，請在翻譯後面以{}附註原文。
 
 4.  **最終驗證與格式化輸出:**
-    * **在輸出前，請再次對照原圖進行最後檢查，確保沒有任何文字被遺漏並且文字為繁體中文。**
+    * **在輸出前，請再次對照原圖進行最後檢查，確認 (1) 沒有任何文字被遺漏，以及 (2) 所有位置標示 (左/右/上/下) 皆完全正確。**
     * 嚴格按照以下格式回傳結果，不要包含任何額外的說明或開頭語：
         (你定義的描述性標籤): 翻譯後的繁體中文內容
 `;
@@ -488,8 +411,17 @@
                 return `<p>${line}</p>`;
             }).join('');
             
+            // [註解] 更新：在標題列中加入複製和儲存按鈕
             panel.innerHTML = `
                 <div class="panel-header">
+                    <div class="panel-actions flex items-center space-x-2">
+                        <button class="panel-copy-btn" title="複製文字">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        </button>
+                        <button class="panel-save-btn" title="儲存為 TXT">
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        </button>
+                    </div>
                     <span class="font-bold text-slate-700">翻譯結果</span>
                     <div class="panel-controls flex items-center space-x-2">
                          <button class="panel-minimize-btn" title="縮到最小">－</button>
@@ -508,6 +440,18 @@
             resultsSection.appendChild(resultContainer);
             
             makePanelInteractive(panel);
+            
+            // [註解] 為複製和儲存按鈕添加事件監聽
+            const copyBtn = panel.querySelector('.panel-copy-btn');
+            copyBtn.addEventListener('click', () => {
+                copyTextToClipboard(translation);
+                showAlert('已複製到剪貼簿！');
+            });
+
+            const saveBtn = panel.querySelector('.panel-save-btn');
+            saveBtn.addEventListener('click', () => {
+                saveTextAsFile(translation, `翻譯結果-Page-${pageNum}.txt`);
+            });
             
             // [註解] 新增功能：為圖片包裝器添加點擊事件，以打開全螢幕模式
             imageWrapper.addEventListener('click', () => {
@@ -535,6 +479,51 @@
             `;
             resultsSection.appendChild(errorBlock);
         }
+
+        // [註解] 新增功能：複製文字到剪貼簿的函式
+        function copyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            
+            // 避免在畫面上看到文字方塊
+            textArea.style.position = "fixed";
+            textArea.style.top = 0;
+            textArea.style.left = 0;
+            textArea.style.width = '2em';
+            textArea.style.height = '2em';
+            textArea.style.padding = 0;
+            textArea.style.border = 'none';
+            textArea.style.outline = 'none';
+            textArea.style.boxShadow = 'none';
+            textArea.style.background = 'transparent';
+
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error('無法複製文字: ', err);
+            }
+
+            document.body.removeChild(textArea);
+        }
+
+        // [註解] 新增功能：將文字儲存為 .txt 檔案的函式
+        function saveTextAsFile(text, filename) {
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
 
         // [註解] 讓浮動視窗可以互動 (拖曳、三種模式切換) 的函式
         function makePanelInteractive(panel) {
